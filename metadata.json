@@ -1,0 +1,6 @@
+{
+  "name": "Gestor de Equipo de Fútbol",
+  "description": "Aplicación responsive para gestionar un plantilla de equipo de fútbol, con sincronización de Supabase y carga de fotos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
