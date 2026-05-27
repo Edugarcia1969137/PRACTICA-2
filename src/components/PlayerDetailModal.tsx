@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { Jugador } from '../types';
+import { Jugador, Evaluacion } from '../types';
 import { getPlayerPhotoUrl } from '../lib/supabase';
-import { X, Calendar, Compass, Award, ShieldAlert, Sparkles, Edit, ShieldCheck, Cpu, Star, TrendingUp, Ruler } from 'lucide-react';
+import { X, Calendar, Compass, Award, ShieldAlert, Sparkles, Edit, ShieldCheck, Cpu, Star, TrendingUp, Ruler, FileDown } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 
 interface PlayerDetailModalProps {
   player: Jugador | null;
   isOpen: boolean;
   onClose: () => void;
   onEdit: (player: Jugador) => void;
+  evaluations?: Evaluacion[];
 }
 
 export const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({
@@ -15,11 +17,266 @@ export const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({
   isOpen,
   onClose,
   onEdit,
+  evaluations = [],
 }) => {
   const [imageError, setImageError] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   if (!isOpen || !player) return null;
 
+  const handleExportPDF = async () => {
+    if (!player) return;
+    setIsExporting(true);
+
+    try {
+      // Create jsPDF instance (standard A4 layout)
+      const doc = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const primaryColor = 
+        player.demarcacion === 'Portero' ? [16, 185, 129] :
+        player.demarcacion === 'Defensa' ? [59, 130, 246] :
+        player.demarcacion === 'Centrocampista' ? [245, 158, 11] :
+        [239, 68, 68];
+
+      const pageWidth = 210;
+      const pageHeight = 297;
+      let currentY = 15;
+
+      // 1. Sleek Position-themed visual banner at the top
+      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.rect(15, currentY, 180, 28, 'F');
+
+      // Banner Typography Content
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.text('REPORTE TECNICO DE SCOUTING & EVALUACION', 20, currentY + 7);
+
+      doc.setFontSize(18);
+      doc.text(`${player.nombre.toUpperCase()} ${player.apellidos.toUpperCase()}`, 20, currentY + 16);
+
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(9.5);
+      doc.text(`#${player.dorsal}  |  ${player.demarcacion.toUpperCase()}  |  ${player.equipo || 'SIN CLUB'}`, 20, currentY + 23);
+
+      currentY += 38; // Give generous breathing space
+
+      // Multi-page layout automatic boundaries helper
+      const checkSpace = (heightNeeded: number) => {
+        if (currentY + heightNeeded > pageHeight - 15) {
+          doc.addPage();
+          currentY = 20;
+          return true;
+        }
+        return false;
+      };
+
+      // 2. Identity Block Grids (Age, Height, Team info)
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(15, currentY, 86, 15, 'FD'); // Left block (Age)
+      doc.rect(109, currentY, 86, 15, 'FD'); // Right block (Height)
+
+      doc.setTextColor(100, 116, 139);
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.text('EDAD Y NACIMIENTO', 18, currentY + 5);
+      doc.text('ESTATURA / TALLA', 112, currentY + 5);
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(9.5);
+      doc.text(`${age} anos (${formattedBirthdate})`, 18, currentY + 11);
+      doc.text(`${player.talla} cm`, 112, currentY + 11);
+
+      currentY += 21;
+
+      // 3. Technical Aptitudes Bar Graph block
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text(`MATRIZ DE APTITUDES DE ${player.demarcacion.toUpperCase()} (MEDIA GENERAL: ${overallAvg})`, 15, currentY);
+
+      doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.setLineWidth(0.4);
+      doc.line(15, currentY + 2.5, 195, currentY + 2.5);
+
+      currentY += 9;
+
+      // Loop through stats list beautifully
+      statsList.forEach((st) => {
+        checkSpace(11);
+
+        doc.setTextColor(51, 65, 85);
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.text(st.name, 15, currentY);
+
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
+        doc.text(st.desc, 15, currentY + 3.5);
+
+        // Numeric score representation
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text(`${st.val} / 99`, 105, currentY + 1);
+
+        // Progress visuals
+        doc.setFillColor(241, 245, 249);
+        doc.rect(120, currentY - 2, 75, 3.5, 'F');
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.rect(120, currentY - 2, 75 * (st.val / 100), 3.5, 'F');
+
+        currentY += 9.5;
+      });
+
+      currentY += 4;
+
+      // 4. Clinical Notes and Observations Block
+      checkSpace(35);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('OBSERVACIONES GENERALES / REPORTE CLINICO', 15, currentY);
+
+      doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.setLineWidth(0.4);
+      doc.line(15, currentY + 2.5, 195, currentY + 2.5);
+
+      currentY += 8;
+
+      if (player.observaciones) {
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.25);
+
+        const obsLines = doc.splitTextToSize(player.observaciones, 172);
+        const boxHeight = (obsLines.length * 4.5) + 7;
+
+        checkSpace(boxHeight + 5);
+        doc.rect(15, currentY, 180, boxHeight, 'FD');
+
+        doc.setTextColor(51, 65, 85);
+        doc.setFont('Helvetica', 'oblique');
+        doc.setFontSize(9);
+        doc.text(obsLines, 19, currentY + 5);
+
+        currentY += boxHeight + 8;
+      } else {
+        doc.setTextColor(148, 163, 184);
+        doc.setFont('Helvetica', 'italic');
+        doc.setFontSize(9.5);
+        doc.text('No se han registrado observaciones clinicas o tecnicas para este jugador.', 15, currentY + 4);
+        currentY += 13;
+      }
+
+      // 5. Historical Evaluations Section (if any evaluations exist)
+      const evs = evaluations.filter(e => e.jugador_id === player.id);
+
+      if (evs.length > 0) {
+        checkSpace(40);
+        doc.setTextColor(15, 23, 42);
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text(`HISTORIAL DE EVALUACIONES (${evs.length})`, 15, currentY);
+
+        doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.setLineWidth(0.4);
+        doc.line(15, currentY + 2.5, 195, currentY + 2.5);
+
+        currentY += 9;
+
+        evs.forEach((ev, idx) => {
+          let commentsLines: string[] = [];
+          if (ev.comentarios) {
+            commentsLines = doc.splitTextToSize(ev.comentarios, 172);
+          }
+          const cardHeight = 16 + (commentsLines.length > 0 ? (commentsLines.length * 4.2) + 5 : 0);
+          
+          checkSpace(cardHeight + 6);
+
+          doc.setFillColor(248, 250, 252);
+          doc.setDrawColor(226, 232, 240);
+          doc.setLineWidth(0.2);
+          doc.rect(15, currentY, 180, cardHeight, 'FD');
+
+          // Header inside the card
+          doc.setTextColor(15, 23, 42);
+          doc.setFont('Helvetica', 'bold');
+          doc.setFontSize(9);
+
+          let dtStr = ev.fecha_evaluacion;
+          try {
+            const parts = ev.fecha_evaluacion.split('-');
+            if (parts.length === 3) {
+              const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+              dtStr = d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+            }
+          } catch {
+            dtStr = ev.fecha_evaluacion;
+          }
+
+          doc.text(`Evaluacion #${idx + 1} - ${dtStr}`, 18, currentY + 5.5);
+
+          // Nota Media Badge inside the card
+          doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+          doc.rect(168, currentY + 2.5, 22, 6, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFont('Helvetica', 'bold');
+          doc.setFontSize(8);
+          doc.text(`Nota: ${ev.nota_media.toFixed(1)}`, 170.5, currentY + 6.7);
+
+          // Sub Scores
+          doc.setFont('Helvetica', 'normal');
+          doc.setFontSize(8);
+          doc.setTextColor(71, 85, 105);
+          doc.text(`Fis.: ${ev.fisico.toFixed(1)}`, 18, currentY + 11.5);
+          doc.text(`Tecn.: ${ev.rendimiento_tecnico.toFixed(1)}`, 48, currentY + 11.5);
+          doc.text(`Tact.: ${ev.tactica.toFixed(1)}`, 78, currentY + 11.5);
+          doc.text(`Act.: ${ev.actitud.toFixed(1)}`, 108, currentY + 11.5);
+
+          // Comments
+          if (ev.comentarios) {
+            doc.setFont('Helvetica', 'boldOblique');
+            doc.setTextColor(148, 163, 184);
+            doc.text('Comentarios:', 18, currentY + 17);
+
+            doc.setFont('Helvetica', 'italic');
+            doc.setTextColor(51, 65, 85);
+            doc.text(commentsLines, 18, currentY + 21);
+          }
+
+          currentY += cardHeight + 4;
+        });
+      }
+
+      // 6. Professional footer bar
+      checkSpace(14);
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.2);
+      doc.line(15, currentY, 195, currentY);
+
+      doc.setFont('Helvetica', 'italic');
+      doc.setFontSize(7.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text('Reporte tecnico oficial generado a traves de la suite TitanScout Pro V2.5.', 15, currentY + 4);
+      doc.text(`Fecha de emision: ${new Date().toLocaleDateString('es-ES')}`, 150, currentY + 4);
+
+      // Trigger standard download
+      const cleanFileName = `Reporte_${player.nombre}_${player.apellidos || ''}.pdf`.replace(/\s+/g, '_');
+      doc.save(cleanFileName);
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
   // Demarcation Styling & Badges
   const getDemarcationTheme = (pos: string) => {
     switch (pos) {
@@ -421,6 +678,16 @@ export const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({
             className="px-4.5 py-2 bg-slate-950 border border-slate-800 hover:bg-slate-900 rounded-xl text-xs font-mono font-bold text-slate-400 hover:text-white transition-all duration-150 cursor-pointer"
           >
             Cerrar
+          </button>
+
+          <button
+            id="btn-detail-pdf"
+            onClick={handleExportPDF}
+            disabled={isExporting}
+            className="inline-flex items-center space-x-1.5 px-4.5 py-2.5 bg-slate-900 border border-slate-800 hover:bg-slate-850 hover:border-slate-700 text-slate-200 rounded-xl text-xs font-mono font-bold transition duration-150 cursor-pointer shadow-md disabled:opacity-50"
+          >
+            <FileDown className={`h-3.5 w-3.5 text-sky-400 ${isExporting ? 'animate-bounce' : ''}`} />
+            <span>{isExporting ? 'Exportando...' : 'Exportar PDF'}</span>
           </button>
           
           <button

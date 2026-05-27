@@ -20,20 +20,24 @@ ALTER TABLE public.jugadores ENABLE ROW LEVEL SECURITY;
 
 -- 2. Crear políticas de acceso para jugadores (Acceso Público o Autenticado)
 -- Permitir lectura pública a cualquiera
+DROP POLICY IF EXISTS "Permitir lectura pública de jugadores" ON public.jugadores;
 CREATE POLICY "Permitir lectura pública de jugadores" 
 ON public.jugadores FOR SELECT 
 USING (true);
 
 -- Permitir inserción/actualización/borrado solo a usuarios autenticados
+DROP POLICY IF EXISTS "Permitir inserción a usuarios autenticados" ON public.jugadores;
 CREATE POLICY "Permitir inserción a usuarios autenticados" 
 ON public.jugadores FOR INSERT 
 WITH CHECK (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Permitir actualización a usuarios autenticados" ON public.jugadores;
 CREATE POLICY "Permitir actualización a usuarios autenticados" 
 ON public.jugadores FOR UPDATE 
 USING (auth.role() = 'authenticated')
 WITH CHECK (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Permitir eliminación a usuarios autenticados" ON public.jugadores;
 CREATE POLICY "Permitir eliminación a usuarios autenticados" 
 ON public.jugadores FOR DELETE 
 USING (auth.role() = 'authenticated');
@@ -49,19 +53,23 @@ ON CONFLICT (id) DO NOTHING;
 
 -- políticas para el bucket de storage 'jugadores'
 -- Permitir lectura de imágenes públicamente
+DROP POLICY IF EXISTS "Imágenes públicas para cualquiera" ON storage.objects;
 CREATE POLICY "Imágenes públicas para cualquiera" 
 ON storage.objects FOR SELECT 
 USING (bucket_id = 'jugadores');
 
 -- Permitir subida y modificación solo a usuarios autenticados
+DROP POLICY IF EXISTS "Subida de imágenes para autenticados" ON storage.objects;
 CREATE POLICY "Subida de imágenes para autenticados" 
 ON storage.objects FOR INSERT 
 WITH CHECK (bucket_id = 'jugadores' AND auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Modificación de imágenes de autenticados" ON storage.objects;
 CREATE POLICY "Modificación de imágenes de autenticados" 
 ON storage.objects FOR UPDATE 
 USING (bucket_id = 'jugadores' AND auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Eliminación de imágenes de autenticados" ON storage.objects;
 CREATE POLICY "Eliminación de imágenes de autenticados" 
 ON storage.objects FOR DELETE 
 USING (bucket_id = 'jugadores' AND auth.role() = 'authenticated');

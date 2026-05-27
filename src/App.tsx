@@ -11,6 +11,7 @@ import { EvaluacionesView } from './components/EvaluacionesView';
 import { SupabaseInstructions } from './components/SupabaseInstructions';
 import { PlayerFormModal } from './components/PlayerFormModal';
 import { PlayerDetailModal } from './components/PlayerDetailModal';
+import { PartidosView } from './components/PartidosView';
 import { 
   Users, 
   BarChart3, 
@@ -26,7 +27,8 @@ import {
   AlertCircle,
   LayoutGrid,
   Table,
-  ClipboardCheck
+  ClipboardCheck,
+  Shield
 } from 'lucide-react';
 
 export default function App() {
@@ -38,7 +40,7 @@ export default function App() {
   const isSupabaseActive = isSupabaseConfigured();
 
   // Navigation state
-  const [activeTab, setActiveTab] = useState<'plantilla' | 'evaluaciones' | 'estadisticas' | 'configuracion'>('plantilla');
+  const [activeTab, setActiveTab] = useState<'plantilla' | 'evaluaciones' | 'partidos' | 'estadisticas' | 'configuracion'>('plantilla');
 
   // View mode switcher: 'grid' | 'table'
   const [viewMode, setViewMode] = useState<'grid' | 'table'>(() => {
@@ -509,6 +511,19 @@ export default function App() {
                 <ClipboardCheck className="h-4 w-4 text-emerald-400" />
                 <span>Evaluaciones</span>
               </button>
+
+              <button
+                id="tab-view-partidos"
+                onClick={() => setActiveTab('partidos')}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer border ${
+                  activeTab === 'partidos' 
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                    : 'text-slate-400 hover:text-white hover:bg-slate-900/50 border-transparent'
+                }`}
+              >
+                <Shield className="h-4 w-4 text-emerald-405 text-emerald-400" />
+                <span>Partidos</span>
+              </button>
               
               <button
                 id="tab-view-stats"
@@ -580,6 +595,15 @@ export default function App() {
           >
             <ClipboardCheck className="h-4.5 w-4.5" />
             <span>Eval.</span>
+          </button>
+
+          <button
+            id="mobile-tab-partidos"
+            onClick={() => setActiveTab('partidos')}
+            className={`flex-1 flex flex-col items-center space-y-1 ${activeTab === 'partidos' ? 'text-emerald-400 font-extrabold' : 'hover:text-slate-200'}`}
+          >
+            <Shield className="h-4.5 w-4.5" />
+            <span>Partidos</span>
           </button>
           
           <button
@@ -910,6 +934,10 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'partidos' && (
+          <PartidosView players={players} />
+        )}
+
         {activeTab === 'estadisticas' && (
           <TeamStats players={players} />
         )}
@@ -949,6 +977,7 @@ export default function App() {
         isOpen={isDetailOpen}
         onClose={() => { setIsDetailOpen(false); setDetailedPlayer(null); }}
         onEdit={(p) => { setSelectedPlayer(p); setIsFormOpen(true); }}
+        evaluations={evaluations}
       />
 
     </div>
